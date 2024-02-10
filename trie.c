@@ -1,120 +1,98 @@
-/**
- * @file trie.c
- * @author Yarin Avisidris (yarinavisidris100.com)
- * @brief the following is the implementation of the Trie data structure.
- * @version 0.1
- * @date 2023-05-24
- * 
- * @copyright Copyright (c) 2023
- * 
- */
-#include "trie.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define TRIE_BASE_CHAR ' '
-struct trie_node {
-    void * end_of_str_ctx;
-    struct trie_node * next[95];
-};
+#define ALPHABET_SIZE 95
 
-struct trie {
-    struct trie_node * next[95];
-};
+typedef struct line_list {
+    int line;
+    struct line_list *next;
+} LineList;
 
+typedef struct trie_node {
+    LineList *lines;
+    struct trie_node *children[ALPHABET_SIZE];
+} TrieNode;
 
-Trie trie() {
-    return calloc(1,sizeof(struct trie));
-}
-
-static struct trie_node *internal_trie_exists(struct trie_node * node_i,const char * string) {
-    while(node_i) {
-        if(*string == '\0') {
-            if(node_i->end_of_str_ctx != NULL) {
-                return node_i;
-            }
-            return NULL;
+TrieNode *createTrieNode() {
+    TrieNode *node = (TrieNode *)malloc(sizeof(TrieNode));
+    if (node) {
+        int i;
+        node->lines = NULL;
+        for (i = 0; i < ALPHABET_SIZE; i++) {
+            node->children[i] = NULL;
         }
-        node_i = node_i->next[(*string) - TRIE_BASE_CHAR];
-        string++;
     }
-    return NULL;
+    return node;
 }
 
+LineList *addLine(LineList *list, int line) {
+    LineList *newNode = (LineList *)malloc(sizeof(LineList));
+    if (newNode) {
+        newNode->line = line;
+        newNode->next = list;
+        return newNode;
+    }
+    return list;
+}
 
-const char *trie_insert(Trie trie,const char *string,void * end_of_str_ctx) {
-    const char * temp = string;
-    struct trie_node ** iterator = &trie->next[(*string) - TRIE_BASE_CHAR];
-    while(1) {
-        if(*iterator == NULL) {
-            (*iterator) = calloc(1,sizeof(struct trie_node));
-            if(*iterator == NULL)
-                return NULL;
+void insertWord(TrieNode *root, const char *word, int line) {
+    TrieNode *current = root;
+    while (*word) {
+        if (!current->children[*word - TRIE_BASE_CHAR]) {
+            current->children[*word - TRIE_BASE_CHAR] = createTrieNode();
         }
-        string++;
-        if(*string !='\0')
-            iterator = &(*iterator)->next[(*string) - TRIE_BASE_CHAR];
-        else
-            break;
+        current = current->children[*word - TRIE_BASE_CHAR];
+        word++;
     }
-    (*iterator)->end_of_str_ctx = end_of_str_ctx;
-    return temp;
-}
-void trie_delete(Trie trie,const char *string) {
-    struct trie_node * find_node;
-    if(string == NULL)
-        return;
-    find_node = internal_trie_exists(trie->next[(*string) - TRIE_BASE_CHAR],string+1);
-    if(find_node)
-        find_node->end_of_str_ctx = NULL;
+
+    current->lines = addLine(current->lines, line);
 }
 
-void * trie_exists(Trie trie,const char *string) {
-    struct trie_node * find_node;
-    if(string == NULL)
-        return NULL;
-    find_node = internal_trie_exists(trie->next[(*string) - TRIE_BASE_CHAR],string+1);
-    return find_node == NULL ? NULL : find_node->end_of_str_ctx;
-}
-
-static void trie_destroy_sub(struct trie_node * node_i) {
+void printTrie(TrieNode *node, char *prefix, int level) {
     int i;
-    for(i=0;i<95;i++) {
-        if(node_i->next[i] != NULL) {
-            trie_destroy_sub(node_i->next[i]);
-            node_i->next[i] = NULL;
+    LineList *cur;
+
+    if (node == NULL) return;
+    if (node->lines != NULL) {
+        prefix[level] = '\0';
+        printf("%s lines in appears ", prefix);
+
+        cur = node->lines;
+        while (cur != NULL) {
+            printf("%d%s", cur->line, cur->next ? ", " : "\n");
+            cur = cur->next;
         }
     }
-    free(node_i);
-}
-void trie_destroy(Trie * trie) {
-    int i;
-    if(*trie != NULL) {
-        Trie t = *trie;
-        for(i=0;i<95;i++) {
-            if(t->next[i] != NULL) 
-                trie_destroy_sub(t->next[i]);
+
+    i = 0;
+    while (i < ALPHABET_SIZE) {
+        if (node->children[i] != NULL) {
+            prefix[level] = i + TRIE_BASE_CHAR;
+            printTrie(node->children[i], prefix, level + 1);
         }
-        free(*trie);
-        (*trie) = NULL;
+        i++;
     }
 }
 
-static void trie_iterate_internal(struct  trie_node *node,void (*do_function)(void * word_ctx,void * do_ctx),void * do_ctx)  {
+void freeTrie(TrieNode *node) {
     int i;
-    if(node->end_of_str_ctx != NULL) {
-        do_function(node->end_of_str_ctx,do_ctx);
-    }
-    for(i=0;i<95;i++) {
-        if(node->next[i]) {
-            trie_iterate_internal(node->next[i],do_function,do_ctx);
+
+    if (!node) return;
+
+    i = 0;
+    while (i < ALPHABET_SIZE) {
+        if (node->children[i]) {
+            freeTrie(node->children[i]);
         }
+        i++;
     }
-}
-void trie_iterate(Trie trie, void (*do_function)(void * word_ctx,void * do_ctx),void * do_ctx) {
-    int i;
-    for(i=0;i<95;i++) {
-        if(trie->next[i]) {
-            trie_iterate_internal(trie->next[i],do_function,do_ctx);
-        }
+
+    while (node->lines) {
+        LineList *temp = node->lines;
+        node->lines = node->lines->next;
+        free(temp);
     }
+    free(node);
 }

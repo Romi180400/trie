@@ -1,46 +1,52 @@
-#include "../trie.h"
-#include <stdio.h>
-void my_do_function(void *word_ctx,void * do_ctx) {
-    /* just print the word*/
-    printf("%s\n",(char*)word_ctx);
-}
-int main() {
+#include "trie.h"
+#include <assert.h>
+#include <string.h>
+
+void insertTextIntoTrie(TrieNode *root, const char *text[], int lineCount) {
     int i;
-    Trie t;
-    const char *f;
-    const char *strings[4] = {
-        "yarin",
-        "hello",
-        "hellow",
-        "hellno"
+    for (i = 0; i < lineCount; ++i) {
+        const char *line = text[i];
+        char word[256];
+        while (*line) {
+            int wordLength = 0;
+            while (*line && (*line == ' ' || *line == '\n')) line++;
+            while (*line && *line != ' ' && *line != '\n') {
+                word[wordLength++] = *line++;
+            }
+            word[wordLength] = '\0';
+
+            if (wordLength > 0) {
+                insertWord(root, word, i + 1);
+            }
+        }
+    }
+}
+
+void testInsertAndPrint() {
+    const char *text[] = {
+            "jack and jill",
+            "went up the hill",
+            "jack and jill",
+            "went down the hill",
+            "then the hill disappeared"
     };
-    t = trie();
-    for(i=0;i<4;i++) {
-        trie_insert(t, strings[i], (char*)strings[i]);
-    }
-    for(i=0;i<4;i++) {
-        f = trie_exists(t, strings[i]);
-        if(f != NULL) {
-            printf("%s\n",f);
-        }
-        else {
-            printf("string:'%s' could not be found.\n",strings[i]);
-        }
-    }
-    /* display all words in the tree by lexicographical order*/
-    printf("printing names in trie:\n");
-    trie_iterate(t,my_do_function,NULL);
-    printf("printing ends here\n");
-    trie_delete(t, strings[1]);
-    for(i=0;i<4;i++) {
-        f = trie_exists(t, strings[i]);
-        if(f != NULL) {
-            printf("%s\n",f);
-        }
-        else {
-            printf("string:'%s' could not be found.\n",strings[i]);
-        }
-    }
-    trie_destroy(&t);
+    int lineCount = sizeof(text) / sizeof(text[0]);
+
+    TrieNode *root = createTrieNode();
+    assert(root != NULL);
+
+    insertTextIntoTrie(root, text, lineCount);
+
+    char prefix[1024] = {0};
+    printTrie(root, prefix, 0);
+
+
+    freeTrie(root);
+
+    printf("Test passed successfully.\n");
+}
+
+int main() {
+    testInsertAndPrint();
     return 0;
 }
