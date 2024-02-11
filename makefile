@@ -16,7 +16,7 @@ TEST_OBJ = $(patsubst %.c,%.o,$(TEST_SRC))
 MAIN_EXE = main_program
 TEST_EXE = test_program
 
-.PHONY: all clean main test
+.PHONY: all clean main test zipify
 
 all: main test
 
@@ -32,4 +32,6 @@ test: $(TEST_OBJ)
 clean:
 	rm -f $(MAIN_OBJ) $(TEST_OBJ) $(MAIN_EXE) $(TEST_EXE) tests/*.o
 
+zipify:
+	zip -r source_code.zip $(MAIN_SRC) $(TEST_SRC) Makefile
 
